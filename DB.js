@@ -74,15 +74,38 @@ exports.GetOrderById = function (OrderID) {
 exports.GetRecentSend = function (Phone) {
     var date = new Date();
     var month = date.toFormat('YYYYMM');
-    const query=`select count(*) as cnt from Orders where OrderID like '${month}%' and stdphone='${Phone}'`;
-    const result=connection.query(query)[0].cnt;
+    const query = `select count(*) as cnt from Orders where OrderID like '${month}%' and stdphone='${Phone}'`;
+    const result = connection.query(query)[0].cnt;
     return result;
 }
 
 exports.GetRecentReceive = function (Phone) {
     var date = new Date();
     var month = date.toFormat('YYYYMM');
-    const query=`select count(*) as cnt from Orders where OrderID like '${month}%' and dstphone='${Phone}'`;
-    const result=connection.query(query)[0].cnt;
+    const query = `select count(*) as cnt from Orders where OrderID like '${month}%' and dstphone='${Phone}'`;
+    const result = connection.query(query)[0].cnt;
+    return result;
+}
+
+//배송기사
+exports.CreateDriver = function (phone, name, password) {
+    const query = `insert into Drivers set Phone='${phone}', name='${name}', password='${password}'`;
+
+    try {
+        connection.query(query);
+        return true;
+    } catch (err) {
+        console.log(err);
+        return false;
+    }
+}
+
+exports.DriverLogin = function (phone, pw, token) {
+    const query = `select Phone, Name from Drivers where Phone='${phone}' and Password='${pw}'`;
+    const result = connection.query(query)[0];
+    if (result) {
+        const tokenQuery = `update Drivers set Token='${token}' where phone='${phone}'`;
+        connection.query(tokenQuery);
+    }
     return result;
 }

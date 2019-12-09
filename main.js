@@ -16,6 +16,8 @@ const Err = {
 app.use(body_parser.urlencoded({ extended: true, limit: '150mb' }));
 app.use(body_parser.json());    //json 파싱
 
+//일반 소비자용 메서드
+
 //로그인
 app.post('/Login', (req, res) => {
     const phone = req.body['Phone'];
@@ -84,7 +86,7 @@ app.get('/Order', (req, res) => {
 });
 
 //최근 사용 내역 조회
-app.get('/SRecent', (req, res) => {
+app.get('/Recent', (req, res) => {
     const phone = req.query.phone;
     const send = db.GetRecentSend(phone);
     const receive = db.GetRecentReceive(phone);
@@ -95,6 +97,34 @@ app.get('/SRecent', (req, res) => {
     res.json(result);
 });
 
+//배송 기사 메서드
+
+//회원가입
+app.post('/driver/signUp', (req, res) => {
+    const phone = req.body['Phone'];
+    const name = req.body['Name'];
+    const pw = req.body['Password'];
+
+    if (db.CreateDriver(phone, name, pw)) {
+        res.json(Ok);
+    } else {
+        res.json(Err);
+    }
+});
+
+//로그인
+app.post('/driver/login', (req, res) => {
+    const phone = req.body['Phone'];
+    const pw = req.body['Password'];
+    const token = req.body['Token'];
+
+    const result = db.DriverLogin(phone, pw, token);
+    if (result) {
+        res.json(result);
+    } else {
+        res.json({ "Phone": null, "Name": null });
+    }
+});
 
 app.listen(port, function (req, res) {
     console.log("안드로이드 서버 실행 중: " + port);
