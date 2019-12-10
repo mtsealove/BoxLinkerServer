@@ -3,6 +3,7 @@ const app = express();
 const body_parser = require('body-parser');
 const port = 3700;
 const db = require('./DB');
+const dbDriver = require('./DbDriver');
 const multer = require('multer');
 var upload = multer({ dest: 'images/' });
 
@@ -15,6 +16,7 @@ const Err = {
 
 app.use(body_parser.urlencoded({ extended: true, limit: '150mb' }));
 app.use(body_parser.json());    //json 파싱
+app.use('/images', express.static('images'));
 
 //일반 소비자용 메서드
 
@@ -61,8 +63,9 @@ app.post('/MakeOrder', upload.single('imgFile'), function (req, res) {
     const StdPhone = info.StdPhone;
     const Weight = info.Weight;
     const Message = info.Msg;
+    const Price=info.Price;
 
-    if (db.CreateOrder(MemberID, StdPhone, StdName, StdAddr, DstPhone, DstName, DstAddr, Size, Weight, PayMethod, Latitude, Longitude, imagePath, Message)) {
+    if (db.CreateOrder(MemberID, StdPhone, StdName, StdAddr, DstPhone, DstName, DstAddr, Size, Weight, PayMethod, Latitude, Longitude, imagePath, Message, Price)) {
         console.log('주문 생성');
         res.json(Ok);
     } else {
@@ -105,7 +108,7 @@ app.post('/driver/signUp', (req, res) => {
     const name = req.body['Name'];
     const pw = req.body['Password'];
 
-    if (db.CreateDriver(phone, name, pw)) {
+    if (dbDriver.CreateDriver(phone, name, pw)) {
         res.json(Ok);
     } else {
         res.json(Err);
@@ -118,7 +121,7 @@ app.post('/driver/login', (req, res) => {
     const pw = req.body['Password'];
     const token = req.body['Token'];
 
-    const result = db.DriverLogin(phone, pw, token);
+    const result = dbDriver.DriverLogin(phone, pw, token);
     if (result) {
         res.json(result);
     } else {
@@ -126,6 +129,74 @@ app.post('/driver/login', (req, res) => {
     }
 });
 
+//새로운 주문 목록 받아오기
+app.get('/driver/Get/newOrderList', (req, res) => {
+    const Latitude = req.query.Latitude;
+    const Longitude = req.query.Longitude;
+    const result = dbDriver.GetNewOrders(Latitude, Longitude, res);
+});
+
+//주문 수락
+app.post('/driver/takeOrder', (req, res) => {
+    const orderID = req.body['OrderID'];
+    const phone = req.body['Phone'];
+    const Start = req.body['Start'];
+    if (dbDriver.TakeOrder(orderID, phone, Start)) {
+        res.json(Ok);
+    } else {
+        res.json(Err);
+    }
+})
+
+//내 배송 목록
+app.get('/driver/Get/myOrderList', (req, res) => {
+    const phone = req.query.Phone;
+    res.json(dbDriver.GetMyOrders(phone));
+});
+
+//상태 업데이트
+app.post('/driver/Update/Status', (req, res) => {
+    const OrderID = req.body['OrderID'];
+    const Status = req.body['Status'];
+
+    if (dbDriver.UpdateOrderStatus(OrderID, Status)) {
+        res.json(Ok);
+    } else {
+        res.json(Err);
+    }
+});
+
+//위치정보 업데이트
+app.post('/driver/Update/Location', (req, res) => {
+    const phone = req.body['DriverID'];
+    const Latitude = req.body['Latitude'];
+    const Longitude = req.body['Longitude'];
+
+    if (dbDriver.UpdateLocation(phone, Latitude, Longitude)) {
+        console.log(phone + ": 위치 업데이트");
+        res.json(Ok);
+    } else {
+        res.json(Err);
+    }
+});
+
+//최근 내역
+app.get('/driver/Get/recent', (req, res) => {
+    const phone = req.query.phone;
+    const recent = dbDriver.GetRecent(phone);
+    res.json({ "Recent": recent });
+});
+
+//이전 배송
+app.get('/driver/Get/Last', (req, res)=>{
+    const phone=req.query.Phone;
+    res.json(dbDriver.GetLast(phone));
+});
+
+
 app.listen(port, function (req, res) {
+    const ip = require('ip');
+    console.log('Server IP: ' + ip.address());
     console.log("안드로이드 서버 실행 중: " + port);
 });
+
