@@ -56,16 +56,15 @@ app.post('/MakeOrder', upload.single('imgFile'), function (req, res) {
     const Latitude = info.Latitude;
     const Longitude = info.Longitude;
     const MemberID = info.MemberID;
-    const PayMethod = info.PayMethod;
     const Size = info.Size;
     const StdAddr = info.StdAddr;
     const StdName = info.StdName;
     const StdPhone = info.StdPhone;
     const Weight = info.Weight;
     const Message = info.Msg;
-    const Price=info.Price;
+    const Price = info.Price;
 
-    if (db.CreateOrder(MemberID, StdPhone, StdName, StdAddr, DstPhone, DstName, DstAddr, Size, Weight, PayMethod, Latitude, Longitude, imagePath, Message, Price)) {
+    if (db.CreateOrder(MemberID, StdPhone, StdName, StdAddr, DstPhone, DstName, DstAddr, Size, Weight, Latitude, Longitude, imagePath, Message, Price)) {
         console.log('주문 생성');
         res.json(Ok);
     } else {
@@ -98,6 +97,16 @@ app.get('/Recent', (req, res) => {
         Receive: receive
     };
     res.json(result);
+});
+
+//결제 상태 업데이트
+app.post('/Update/Pay', (req, res) => {
+    const Text = req.body['Text'];
+    const name = Text.split("님")[0];
+    const price = (Text.split(" ")[2]).split("원")[0];
+    console.log(name);
+    console.log(price);
+    db.UpdateConfirm(name, price);
 });
 
 //배송 기사 메서드
@@ -188,8 +197,8 @@ app.get('/driver/Get/recent', (req, res) => {
 });
 
 //이전 배송
-app.get('/driver/Get/Last', (req, res)=>{
-    const phone=req.query.Phone;
+app.get('/driver/Get/Last', (req, res) => {
+    const phone = req.query.Phone;
     res.json(dbDriver.GetLast(phone));
 });
 

@@ -8,7 +8,7 @@ callback이 필요 없는 sync-mysql 모듈 사용 */
 
 const connection = new mysql({
     host: 'localhost',
-    user: 'BoxLinker',   //Iot DB관리 로컬 계정
+    user: 'root',   //Iot DB관리 로컬 계정
     password: fs.readFileSync('pw.dat', 'utf-8'),   //비밀번호는 파일로 따로 관리
     database: 'BoxLinker'
 });
@@ -38,18 +38,30 @@ exports.MemberLogin = function (Phone, Password, Token) {
 }
 
 //주문 생성
-exports.CreateOrder = function (MemberID, StdPhone, StdName, StdAddr, DstPhone, DstName, DstAddr, Size, Weight, PayMethod, Latitude, Longitude, ImagePath, Message, Price) {
+exports.CreateOrder = function (MemberID, StdPhone, StdName, StdAddr, DstPhone, DstName, DstAddr, Size, Weight, Latitude, Longitude, ImagePath, Message, Price) {
     var date = new Date();
     var orderID = date.toFormat('YYYYMMDDHH24MMSS');
     const query = `insert into Orders set OrderID='${orderID}', MemberID='${MemberID}', StdPhone='${StdPhone}', StdName='${StdName}',
      StdAddr='${StdAddr}', DstPhone='${DstPhone}', DstName='${DstName}', DstAddr='${DstAddr}', 
-     Size=${Size}, Weight=${Weight}, PayMethod='${PayMethod}',
-     Latitude=${Latitude}, Longitude=${Longitude}, ImagePath='${ImagePath}', Message='${Message}', Status=1, Price=${Price}`;
+     Size=${Size}, Weight=${Weight}, 
+     Latitude=${Latitude}, Longitude=${Longitude}, ImagePath='${ImagePath}', Message='${Message}', Status=1, Price=${Price}, Confirm=false`;
 
     try {
         connection.query(query);
         GeoCode(StdAddr, orderID, true);
         GeoCode(DstAddr, orderID, false);
+        return true;
+    } catch (err) {
+        console.log(err);
+        return false;
+    }
+}
+
+//결제 확인
+exports.UpdateConfirm = function (name, Price) {
+    const query = `update Orders set Confirm=true where StdName='${name}' and Price=${Price}`;
+    try {
+        connection.query(query);
         return true;
     } catch (err) {
         console.log(err);
@@ -70,7 +82,7 @@ function GeoCode(Address, OrderID, isStart) {
     geocoder.geocode(Address, function (err, res) {
         const latitude = res[0].latitude;
         const longitude = res[0].longitude;
-            GetNearTermianl(latitude, longitude, OrderID, isStart);
+        GetNearTermianl(latitude, longitude, OrderID, isStart);
     });
 }
 

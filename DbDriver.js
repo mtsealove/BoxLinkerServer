@@ -2,10 +2,10 @@ const mysql = require('sync-mysql');
 const fs = require('fs');
 const NodeGeocoder = require('node-geocoder');
 const distanceManager = require('./Distance');
-const request=require('request');
+const request = require('request');
 const connection = new mysql({
     host: 'localhost',
-    user: 'BoxLinker',   //Iot DB관리 로컬 계정
+    user: 'root',   //Iot DB관리 로컬 계정
     password: fs.readFileSync('pw.dat', 'utf-8'),   //비밀번호는 파일로 따로 관리
     database: 'BoxLinker'
 });
@@ -153,16 +153,16 @@ exports.UpdateOrderStatus = function (orderID, status) {
             FCM.PushNormal(tokens[i].Token, "주문 상태가 변경되었습니다");
         }
         if (status == 6) {
-            const tmnQuery=`select StTmnCd, DstTmnCd from Orders where OrderID='${orderID}'`;
-            const tmn=connection.query(tmnQuery)[0];
-            var StTmnCd=String(tmn.StTmnCd);
-            var DstTmnCd=String(tmn.DstTmnCd);
-            if(StTmnCd.length<3)
-                StTmnCd="0"+StTmnCd;
-            if(DstTmnCd.length<3)
-                DstTmnCd="0"+DstTmnCd;
-            
-            SetTerminalTime(orderID,StTmnCd, DstTmnCd);
+            const tmnQuery = `select StTmnCd, DstTmnCd from Orders where OrderID='${orderID}'`;
+            const tmn = connection.query(tmnQuery)[0];
+            var StTmnCd = String(tmn.StTmnCd);
+            var DstTmnCd = String(tmn.DstTmnCd);
+            if (StTmnCd.length < 3)
+                StTmnCd = "0" + StTmnCd;
+            if (DstTmnCd.length < 3)
+                DstTmnCd = "0" + DstTmnCd;
+
+            SetTerminalTime(orderID, StTmnCd, DstTmnCd);
         }
 
         return true;
@@ -175,32 +175,35 @@ exports.UpdateOrderStatus = function (orderID, status) {
 function SetTerminalTime(orderID, stTmn, dstTmn) {
     var url = 'http://openapi.tago.go.kr/openapi/service/ExpBusArrInfoService/getExpBusArrPrdtInfo';
     var queryParams = '?' + encodeURIComponent('ServiceKey') + '=ArpN26ykcA%2FOVG5glFhhBYwU3OJAO4x%2B2bQyILHAmwAH%2FLZUbQM7xig9xdwe77qwoVYkNuko4Hs%2F6qg%2B4WmfVw%3D%3D'; /* Service Key*/
-    queryParams += '&' + encodeURIComponent('depTmnCd') + '=' + encodeURIComponent(stTmn); 
-    queryParams += '&' + encodeURIComponent('arrTmnCd') + '=' + encodeURIComponent(dstTmn); 
-    const convert=require('xml-js');
+    queryParams += '&' + encodeURIComponent('depTmnCd') + '=' + encodeURIComponent(stTmn);
+    queryParams += '&' + encodeURIComponent('arrTmnCd') + '=' + encodeURIComponent(dstTmn);
+    const convert = require('xml-js');
 
     request({
         url: url + queryParams,
         method: 'GET'
     }, function (error, response, body) {
-        var date=new Date();
-        var time=date.toFormat('HH24MI');
+        var date = new Date();
+        var time = date.toFormat('HH24MI');
         console.log(time);
-        var xmlToJson = JSON.parse(convert.xml2json(body, {compact: true, spaces: 4}));
-        const data=xmlToJson.response.body.items.item;
-        for(var i=0; i<data.length; i++) {
-            var deptime=data[i].depTm._text.replace(':', '');
-            var arrPrdtTm=data[i].arrPrdtTm._text.substr(11, 15).replace(':', '');
-            console.log("arr: "+arrPrdtTm);
-            console.log("dep: "+deptime);
-            if(deptime<time||arrPrdtTm<time) {
-                const corpNm=data[i].corpNm._text;
-                const arrTime=data[i].arrPrdtTm._text;
-                const updateQuery=`update Orders set CorpNm='${corpNm}', ArrPrdtTm='${arrTime}' where OrderID='${orderID}'`;
-                connection.query(updateQuery);
-                break;
+        var xmlToJson = JSON.parse(convert.xml2json(body, { compact: true, spaces: 4 }));
+        const data = xmlToJson.response.body.items.item;
+        try {
+            for (var i = 0; i < data.length; i++) {
+                var deptime = data[i].depTm._text.replace(':', '');
+                var arrPrdtTm = data[i].arrPrdtTm._text.substr(11, 15).replace(':', '');
+                console.log("arr: " + arrPrdtTm);
+                console.log("dep: " + deptime);
+                if (deptime < time || arrPrdtTm < time) {
+                    const corpNm = data[i].corpNm._text;
+                    const arrTime = data[i].arrPrdtTm._text;
+                    const updateQuery = `update Orders set CorpNm='${corpNm}', ArrPrdtTm='${arrTime}' where OrderID='${orderID}'`;
+                    connection.query(updateQuery);
+                    break;
+                }
             }
-                
+        } catch (err) {
+
         }
     });
 }
